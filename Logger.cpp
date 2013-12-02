@@ -1,3 +1,9 @@
+/***********************************************
+HAYESDUINO PROJECT - COPYRIGHT 2013, PAYTON BYRD
+
+Project homepage: http://hayesduino.codeplex.com
+License: http://hayesduino.codeplex.com/license
+***********************************************/
 #include "Arduino.h"
 #include "Logger.h"
 

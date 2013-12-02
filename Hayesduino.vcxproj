@@ -42,7 +42,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>s:\arduino-1.5.2\hardware\arduino\avr\cores\arduino;s:\arduino-1.5.2\hardware\arduino\avr\variants\mega;s:\arduino-1.5.2\hardware\arduino\avr\libraries\Ethernet;s:\arduino-1.5.2\hardware\arduino\avr\libraries\Ethernet\utility;s:\arduino-1.5.2\hardware\arduino\avr\libraries\SPI;s:\arduino-1.5.2\hardware\arduino\avr\libraries\SPI\utility;s:\arduino-1.5.2\hardware\arduino\avr\libraries\EEPROM;s:\arduino-1.5.2\hardware\arduino\avr\libraries\EEPROM\utility;s:\arduino-1.5.2\hardware\tools\avr\avr\include\;s:\arduino-1.5.2\hardware\tools\avr\avr\include\avr\;s:\arduino-1.5.2\hardware\tools\avr\avr\;s:\arduino-1.5.2\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>S:\Arduino Projects\Hayesduino\Visual Micro\.Hayesduino.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles>S:\Hayesduino\Visual Micro\.Hayesduino.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega2560__;ARDUINO=152;ARDUINO_MAIN;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -71,12 +71,15 @@
   <ItemGroup>
     <ClInclude Include="DEBUG.h" />
     <ClInclude Include="Global.h" />
+    <ClInclude Include="libraries\Ethernet\EthernetClient.h" />
+    <ClInclude Include="libraries\Ethernet\EthernetServer.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="ModemBase.h" />
-    <ClInclude Include="util.h" />
     <ClInclude Include="Visual Micro\.Hayesduino.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="libraries\Ethernet\EthernetClient.cpp" />
+    <ClCompile Include="libraries\Ethernet\EthernetServer.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="ModemBase.cpp" />
   </ItemGroup>
