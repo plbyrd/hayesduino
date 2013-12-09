@@ -5,12 +5,43 @@ Project homepage: http://hayesduino.codeplex.com
 License: http://hayesduino.codeplex.com/license
 ***********************************************/
 #include "ModemBase.h"
+#include "Dns.h"
+#include "EthernetClient.h"
+#include "Ethernet.h"
+
 #define DEBUG 0
 #if DEBUG == 1
 #include "Logger.h"
 #endif
 #include "EEPROM.h"
 
+#ifdef UBRR1H
+#define __MEGA__
+#define POWER_LED 29
+#else
+#define __UNO__
+#endif
+
+
+int ModemBase::getString(EthernetClient *client, char *buffer, int maxLength)
+{
+	char counter = 0;
+	char c;
+
+	while(client->available() && counter++ < maxLength)
+	{
+		c = client->read();
+		_serial->print(c);
+		buffer[counter] = c;
+		if(c == '\n')
+		{
+			buffer[counter+1] = '\0';
+			break;
+		}
+	}
+	
+	return counter;
+}
 
 
 int ModemBase::available(void) { if(_serial) return _serial->available(); 
@@ -88,7 +119,7 @@ void ModemBase::factoryReset(void)
 	writeAddressBook(ADDRESS_BOOK_START + (ADDRESS_BOOK_LENGTH * 0), 
 		(char*)F("commodoreserver.com:1541"));
 
-	if(Serial) Serial.println(F("Initialized modem to factory defaults."));
+	//if(Serial) Serial.println(F("Initialized modem to factory defaults."));
 	println(F("INITIALIZED MODEM SETTINGS TO FACTORY DEFAULTS."));
 }
 
@@ -192,12 +223,14 @@ void ModemBase::begin(
 	setLineSpeed();
 
 	digitalWrite(DCE_DTR, toggleCarrier(false));
+	digitalWrite(DCE_RTS, HIGH);
+	digitalWrite(DCE_RI, LOW);
 
 	resetCommandBuffer(true);
 
 #ifdef __UNO__
 	println(F("COMET BBS READY."));
-	print(F("S90=")); println((int)_isDcdInverted);
+	//print(F("S90=")); println((int)_isDcdInverted);
 #else
 	println(F("HAYESDUINO EXTENDED SET READY."));
 #endif
@@ -275,7 +308,6 @@ void ModemBase::disconnect(EthernetClient *client)
 
 	digitalWrite(DCE_RTS, LOW);
 
-	digitalWrite(DCE_DTR, toggleCarrier(false));
 	delay(1000);
 
 	if(onDisconnect != NULL)
@@ -283,7 +315,9 @@ void ModemBase::disconnect(EthernetClient *client)
 		onDisconnect(client);
 	}
 
-	delay(5000);
+	digitalWrite(DCE_DTR, toggleCarrier(false));
+
+	//delay(5000);
 }
 
 void ModemBase::writeAddressBook(uint16_t address, char * host)
@@ -693,10 +727,7 @@ bool ModemBase::processCommandBufferExtended(EthernetClient *client)
 	if(showOK)
 	{
 		delay(500);
-		if(!_verboseResponses)
-			_serial->println('0');
-		else
-			_serial->println(F("OK"));
+		printOK();
 	}
 
 	return result;
@@ -713,10 +744,57 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 	if(strcmp(_commandBuffer, ("ATZ")) == 0)
 	{
 		loadDefaults();
-		if(!_verboseResponses)
-			_serial->println('0');
+		printOK();
+	}
+	else if(strncmp(_commandBuffer, ("ATT "), 4) == 0)
+	{
+		
+		EthernetClient newClient;
+
+		IPAddress remote_addr;
+		String result;
+		int counter = 0;
+		char buffer[81];
+		char host[81];
+		strncpy(host, _commandBuffer + 5, 80);
+		host[strlen(host) - 1] = '\0';
+
+		DNSClient dns;
+
+		dns.begin(Ethernet.dnsServerIP());
+		dns.getHostByName(_commandBuffer + 4, remote_addr);
+		
+		if(newClient.connect(remote_addr, 13))
+		{
+			delay(100);
+			if(newClient.available())
+			{
+				while(counter++ < 5)
+				{
+					getString(&newClient, buffer, 80);
+					if(strlen(buffer) > 0) break;
+				}
+
+				if(counter < 5)
+				{
+					_serial->println(result);
+				}
+				else
+				{
+					_serial->println(F("INVALID RESPONSE."));
+				}
+			}
+			else
+			{
+				_serial->println(F("no data"));
+			}
+
+			newClient.stop();
+		}
 		else
-			_serial->println(F("OK"));
+		{
+			_serial->println(F("COULD NOT CONNECT."));
+		}
 	}
 	else if(strcmp(_commandBuffer, ("AT&W")) == 0)
 	{
@@ -724,10 +802,7 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 #if DEBUG == 1
 		lggr.println("Saved to defaults.");
 #endif
-		if(!_verboseResponses)
-			_serial->println('0');
-		else
-			_serial->println(F("OK"));
+		printOK();
 	}
 	else if(strcmp(_commandBuffer, ("AT&F")) == 0)
 	{
@@ -735,10 +810,7 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 		{
 			resetToDefaults();
 			loadDefaults();
-			if(!_verboseResponses)
-				_serial->println('0');
-			else
-				_serial->println(F("OK"));
+			printOK();
 		}
 		else
 		{
@@ -747,62 +819,37 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 	}
 	else if(strcmp(_commandBuffer, ("ATA")) == 0)
 	{
-		//digitalWrite(DCE_DTR, toggleCarrier(true));
-
 		_isConnected = true;
 		_isCommandMode = false;
 		_isRinging = false;
 
-		//digitalWrite(DCE_RTS, HIGH);
-
 		if(_baudRate == 38400)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("28"));
-			else
-				_serial->println(F("CONNECT 38400"));
+			printResponse("28", F("CONNECT 38400"));
 		}
 		else if(_baudRate == 19200)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("14"));
-			else
-				_serial->println(F("CONNECT 19200"));
+			printResponse("14", F("CONNECT 19200"));
 		}
 		else if(_baudRate == 14400)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("13"));
-			else
-				_serial->println(F("CONNECT 14400"));
+			printResponse("13", F("CONNECT 14400"));
 		}
 		else if(_baudRate == 9600)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("12"));
-			else
-				_serial->println(F("CONNECT 9600"));
+			printResponse("12", F("CONNECT 9600"));
 		}
 		else if(_baudRate == 4800)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("11"));
-			else
-				_serial->println(F("CONNECT 4800"));
+			printResponse("11", F("CONNECT 4800"));
 		}
 		else if(_baudRate == 2400)
 		{
-			if(!_verboseResponses)    
-				_serial->println(("10"));
-			else
-				_serial->println(F("CONNECT 2400"));
+			printResponse("10", F("CONNECT 2400"));
 		}
 		else if(_baudRate == 1200)
 		{
-			if(!_verboseResponses)    
-				_serial->println('5');
-			else
-				_serial->println(F("CONNECT 1200"));
+			printResponse("5", F("CONNECT 1200"));
 		}
 		else
 		{
@@ -1361,21 +1408,14 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 		if(!processCommandBufferExtended(client))
 		{
 #endif
-			delay(500);
-			if(!_verboseResponses)
-				_serial->println('0');
-			else
-				_serial->println(F("OK"));
+			printOK();
 #ifndef __UNO__
 		}
 #endif
 	}
 	else
 	{
-		if(!_verboseResponses)
-			_serial->println('4');
-		else
-			_serial->println(F("ERROR"));
+		printResponse("4", F("ERROR"));
 
 		//lggr.println(F("Sent ERROR/4"));
 	}
@@ -1392,17 +1432,14 @@ void ModemBase::connect(EthernetClient *client)
 
 	if(_S0_autoAnswer != 0) 
 	{
-		strcpy(_commandBuffer, (const char*)F("ATA"));
+		strcpy(_commandBuffer, (const char*)F("ATA\n"));
 		processCommandBuffer(client);
 	}
 	else
 	{
-		if(!_verboseResponses)
-			_serial->println('2');
-		else
-			_serial->println(F("RING"));
+		printResponse("2", F("RING"));
 
-		digitalWrite(DCE_DCD, toggleCarrier(true));
+		digitalWrite(DTE_DCD, toggleCarrier(true));
 
 		digitalWrite(DCE_RI, HIGH);
 		delay(250);
@@ -1419,52 +1456,31 @@ void ModemBase::connectOut()
 
 	if(_baudRate == 38400)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("28"));
-		else
-			_serial->println(F("38400"));
+		printResponse("28", F("38400"));
 	}
 	else if(_baudRate == 19200)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("14"));
-		else
-			_serial->println(F("19200"));
+		printResponse("15", F("19200"));
 	}
 	else if(_baudRate == 14400)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("13"));
-		else
-			_serial->println(F("14400"));
+		printResponse("13", F("14400"));
 	}
 	else if(_baudRate == 9600)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("12"));
-		else
-			_serial->println(F("9600"));
+		printResponse("12", F("9600"));
 	}
 	else if(_baudRate == 4800)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("11"));
-		else
-			_serial->println(F("4800"));
+		printResponse("11", F("4800"));
 	}
 	else if(_baudRate == 2400)
 	{
-		if(!_verboseResponses)    
-			_serial->println((const char*)F("10"));
-		else
-			_serial->println(F("2400"));
+		printResponse("10", F("2400"));
 	}
 	else if(_baudRate == 1200)
 	{
-		if(!_verboseResponses)    
-			_serial->println('5');
-		else
-			_serial->println(F("1200"));
+		printResponse("5", F("1200"));
 	}
 	else
 	{
@@ -1502,10 +1518,7 @@ void ModemBase::processData(EthernetClient *cl)
 			{
 				_escapeCount = 0;
 
-				if(!_verboseResponses)    
-					_serial->println(F("0"));
-				else
-					_serial->println(F("OK"));
+				printOK();
 			}
 			if(inbound == _S5_bsCharacter)
 			{
@@ -1564,8 +1577,6 @@ void ModemBase::processData(EthernetClient *cl)
 		}
 	}
 	digitalWrite(DCE_RTS, LOW);
-	digitalWrite(DCE_CTS, HIGH);
-
 }
 
 void ModemBase::setLineSpeed(void)
@@ -1590,4 +1601,25 @@ void ModemBase::setLineSpeed(void)
 void ModemBase::resetToDefaults(void)
 {
 	factoryReset();
+}
+
+void ModemBase::printOK(void)
+{
+	printResponse(0, F("OK"));
+}
+
+void ModemBase::printResponse(const char* code, const char* msg)
+{
+	if(!_verboseResponses)
+		_serial->println(code);
+	else
+		_serial->println(msg);
+}
+
+void ModemBase::printResponse(const char* code, const __FlashStringHelper * msg)
+{
+	if(!_verboseResponses)
+		_serial->println(code);
+	else
+		_serial->println(msg);
 }

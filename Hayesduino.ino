@@ -28,7 +28,7 @@ License: http://hayesduino.codeplex.com/license
 #include "Global.h"
 #include "EEPROM.h"
 
-#if DEBUG == 1
+#if DEBUG == 1 && !defined(__UNO__)
 #include "Logger.h"
 #endif
 
@@ -81,11 +81,11 @@ void dialout(char * host, ModemBase *modm)
 
 	client = EthernetClient();
 
-	if(hostname == "5551212")
-	{
-		hostname = "qlink.lyonlabs.org";
-		port = 5190;
-	}
+	//if(hostname == "5551212")
+	//{
+	//	hostname = "qlink.lyonlabs.org";
+	//	port = 5190;
+	//}
 
 	hostname.toCharArray(hostnamebuffer, sizeof(hostnamebuffer), 0U);
 
@@ -274,6 +274,11 @@ void loop()
 		{
 			digitalWrite(DCE_RTS, LOW);
 		}
+		else if(modem.getIsCommandMode() && client.available() > 0)
+		{
+			client.println(F("modem is in command mode."));
+			modem.println(F("modem is in command mode."));
+		}
 	}
 	else if(modem.getIsConnected() || 
 		!modem.getIsCommandMode())
@@ -286,10 +291,10 @@ void loop()
 	{
 		digitalWrite(DCE_RTS, LOW);
 	}
-	else if(digitalRead(DCE_CTS) == HIGH)
-	{
-		digitalWrite(DCE_RTS, LOW);
-	}
+	//else if(digitalRead(DTE_CTS) == HIGH)
+	//{
+	//	digitalWrite(DTE_RTS, LOW);
+	//}
 
 	modem.processData(&client);
 

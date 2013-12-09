@@ -5,6 +5,13 @@ Project homepage: http://hayesduino.codeplex.com
 License: http://hayesduino.codeplex.com/license
 ***********************************************/
 
+#ifdef UBRR1H
+#define __MEGA__
+#define POWER_LED 29
+#else
+#define __UNO__
+#endif
+
 #ifndef _MODEMBASE_h
 #define _MODEMBASE_h
 #include <Stream.h>
@@ -111,6 +118,10 @@ S37 Command options:
 #ifndef __UNO__
 	bool processCommandBufferExtended(EthernetClient *client);
 #endif
+	void printOK(void);
+	void printResponse(const char* code, const char* msg);
+	void printResponse(const char* code, const __FlashStringHelper * msg);
+	int getString(EthernetClient *client, char *buffer, int maxLength);
 
  public:
 	 ModemBase();
