@@ -1605,7 +1605,7 @@ void ModemBase::resetToDefaults(void)
 
 void ModemBase::printOK(void)
 {
-	printResponse(0, F("OK"));
+	printResponse("0", F("OK"));
 }
 
 void ModemBase::printResponse(const char* code, const char* msg)
