@@ -749,7 +749,7 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 	else if(strncmp(_commandBuffer, ("ATT "), 4) == 0)
 	{
 		
-		EthernetClient newClient;
+		EthernetClient *newClient = new EthernetClient();
 
 		IPAddress remote_addr;
 		String result;
@@ -764,14 +764,14 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 		dns.begin(Ethernet.dnsServerIP());
 		dns.getHostByName(_commandBuffer + 4, remote_addr);
 		
-		if(newClient.connect(remote_addr, 13))
+		if(newClient->connect(remote_addr, 13))
 		{
 			delay(100);
-			if(newClient.available())
+			if(newClient->available())
 			{
 				while(counter++ < 5)
 				{
-					getString(&newClient, buffer, 80);
+					getString(newClient, buffer, 80);
 					if(strlen(buffer) > 0) break;
 				}
 
@@ -789,7 +789,8 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 				_serial->println(F("no data"));
 			}
 
-			newClient.stop();
+			newClient->stop();
+			delete newClient;
 		}
 		else
 		{

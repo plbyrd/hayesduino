@@ -222,6 +222,14 @@ void loop()
 			modem.disconnect(&client);
 			return;
 		}
+
+		//if(!client.connected()) return;
+		//else if(!modem.getIsConnected())
+		//{
+		//	client.println(F("modem in limbo. disconnecting."));
+		//	client.stop();
+		//	currentClient == MAX_SOCK_NUM;
+		//}
 	}
 
 	for(int i=0; i<4; ++i)
@@ -230,9 +238,10 @@ void loop()
 			&& i != currentClient 
 			&& EthServer.connected(i))
 		{
-			EthernetClient tempClient(i);
-			tempClient.println(F("SYSTEM IS BUSY.  TRY AGAIN LATER."));
-			tempClient.stop();
+			EthernetClient *tempClient = new EthernetClient(i);
+			tempClient->println(F("SYSTEM IS BUSY.  TRY AGAIN LATER."));
+			tempClient->stop();
+			delete tempClient;
 		}
 	}
 
@@ -253,6 +262,7 @@ void loop()
 		}
 		client.println(F("CONNECTING TO SYSTEM."));
 	} 
+	
 
 	if(modem.getIsRinging())
 	{
