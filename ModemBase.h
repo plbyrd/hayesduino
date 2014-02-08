@@ -38,16 +38,29 @@ License: http://hayesduino.codeplex.com/license
 #define RxD      1 // Green
 #else
 // MEGA
-#define DTE_RTS  22  // Orange
-#define DCE_CTS  22
-#define DTE_DTR  23  // White/Green
-#define DCE_DCD  23
-#define DCE_RI   24  // White/Brown
-#define DTE_DCD  25  // Brown
-#define DCE_DTR  25
-#define DTE_CTS  26  // White/Orange
-#define DCE_RTS  26
-#define DTE_DSR  27  // White/Blue
+//#define DTE_RTS  22  // Orange
+//#define DCE_CTS  22
+//#define DTE_DTR  27  // White/Green
+//#define DCE_DCD  27
+//#define DCE_RI   24  // White/Brown
+//#define DTE_DCD  25  // Brown
+//#define DCE_DTR  25
+//#define DTE_CTS  26  // White/Orange
+//#define DCE_RTS  26
+//#define DTE_DSR  23  // White/Blue
+//#define TxD      19  // Blue
+//#define RxD      18 // Green
+
+#define DTE_RTS  2  // Orange
+#define DCE_CTS  2
+#define DTE_DTR  7  // White/Green
+#define DCE_DCD	 7
+#define DCE_RI   4  // White/Brown
+#define DTE_DCD  5  // Brown
+#define DCE_DTR  5
+#define DTE_CTS  6  // White/Orange
+#define DCE_RTS  6
+#define DTE_DSR  3  // White/Blue
 #define TxD      19  // Blue
 #define RxD      18 // Green
 #endif

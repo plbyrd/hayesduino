@@ -9,6 +9,7 @@ License: http://hayesduino.codeplex.com/license
 #ifdef UBRR1H
 #define __MEGA__
 #define POWER_LED 29
+#define DEBUG 1
 #else
 #define __UNO__
 #endif
@@ -27,6 +28,7 @@ License: http://hayesduino.codeplex.com/license
 #include "SPI.h"
 #include "Global.h"
 #include "EEPROM.h"
+#include "HardwareSerial.h"
 
 #if DEBUG == 1 && !defined(__UNO__)
 #include "Logger.h"
@@ -81,11 +83,11 @@ void dialout(char * host, ModemBase *modm)
 
 	client = EthernetClient();
 
-	//if(hostname == "5551212")
-	//{
-	//	hostname = "qlink.lyonlabs.org";
-	//	port = 5190;
-	//}
+	if(hostname == "5551212")
+	{
+		hostname = "qlink.lyonlabs.org";
+		port = 5190;
+	}
 
 	hostname.toCharArray(hostnamebuffer, sizeof(hostnamebuffer), 0U);
 
@@ -145,7 +147,8 @@ void setup()
 #ifdef __UNO__
 	modem.begin(&Serial, &disconnectClient, &dialout);
 #else
-	modem.begin(&Serial2, &disconnectClient, &dialout);
+	Serial1.begin(2400);
+	modem.begin(&Serial1, &disconnectClient, &dialout);
 	//modem.factoryReset();
 
 #endif
@@ -251,16 +254,20 @@ void loop()
 		!modem.getIsConnected()
 		)
 	{
-		client = tempClient;
-		currentClient = client.getSock();
-
-		modem.connect(&client);
-
-		for(int i = 0; i < 25; ++i)
+		delay(500);
+		if(EthServer.connected(tempClient.getSock()))
 		{
-			client.println(".");
+			client = tempClient;
+			currentClient = client.getSock();
+
+			modem.connect(&client);
+
+			for(int i = 0; i < 25; ++i)
+			{
+				client.println(".");
+			}
+			client.println(F("CONNECTING TO SYSTEM."));
 		}
-		client.println(F("CONNECTING TO SYSTEM."));
 	} 
 	
 

@@ -9,7 +9,7 @@ License: http://hayesduino.codeplex.com/license
 #include "EthernetClient.h"
 #include "Ethernet.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG == 1
 #include "Logger.h"
 #endif
@@ -120,7 +120,7 @@ void ModemBase::factoryReset(void)
 		(char*)F("commodoreserver.com:1541"));
 
 	//if(Serial) Serial.println(F("Initialized modem to factory defaults."));
-	println(F("INITIALIZED MODEM SETTINGS TO FACTORY DEFAULTS."));
+	if(Serial) println(F("INITIALIZED MODEM SETTINGS TO FACTORY DEFAULTS."));
 }
 
 void ModemBase::saveDefaults(void)
@@ -233,6 +233,9 @@ void ModemBase::begin(
 	//print(F("S90=")); println((int)_isDcdInverted);
 #else
 	println(F("HAYESDUINO EXTENDED SET READY."));
+#endif
+#if DEBUG == 1
+		lggr.println(F("Modem initialized."));
 #endif
 }
 
@@ -736,6 +739,11 @@ bool ModemBase::processCommandBufferExtended(EthernetClient *client)
 
 void ModemBase::processCommandBuffer(EthernetClient *client)
 {
+	for(int i=0; i < strlen(_commandBuffer); ++i)
+	{
+		_commandBuffer[i] = toupper(_commandBuffer[i]);
+	}
+
 	if(strcmp(_commandBuffer, ("AT/")) == 0)
 	{
 		strcpy(_commandBuffer, _lastCommandBuffer);
@@ -763,7 +771,7 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 
 		dns.begin(Ethernet.dnsServerIP());
 		dns.getHostByName(_commandBuffer + 4, remote_addr);
-		
+		//remote_addr.printTo(*_serial);
 		if(newClient->connect(remote_addr, 13))
 		{
 			delay(100);
