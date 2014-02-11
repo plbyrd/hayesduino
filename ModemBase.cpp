@@ -8,6 +8,7 @@ License: http://hayesduino.codeplex.com/license
 #include "Dns.h"
 #include "EthernetClient.h"
 #include "Ethernet.h"
+#include "HardwareSerial.h"
 
 #define DEBUG 1
 #if DEBUG == 1
