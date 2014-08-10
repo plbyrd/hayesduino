@@ -80,13 +80,17 @@ ModemBase::ModemBase()
 {
 	pinMode(DCE_RI , OUTPUT);
 	pinMode(DCE_RTS, OUTPUT);
+	//pinMode(DCE_RTS, INPUT);
 	pinMode(DCE_DCD, INPUT);
 	pinMode(DCE_CTS, INPUT);
+	//pinMode(DCE_CTS, OUTPUT);
 	pinMode(DCE_DTR, OUTPUT);
+	pinMode(DTE_DSR, OUTPUT);
 
 	digitalWrite(DCE_RI, LOW);
-	digitalWrite(DCE_RTS, LOW);
-	digitalWrite(DCE_DTR, toggleCarrier(false));
+	digitalWrite(DCE_CTS, HIGH);
+	digitalWrite(DTE_DSR, HIGH);
+	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
 }
 
 void ModemBase::factoryReset(void)
@@ -223,7 +227,7 @@ void ModemBase::begin(
 
 	setLineSpeed();
 
-	digitalWrite(DCE_DTR, toggleCarrier(false));
+	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
 	digitalWrite(DCE_RTS, HIGH);
 	digitalWrite(DCE_RI, LOW);
 
@@ -319,7 +323,7 @@ void ModemBase::disconnect(EthernetClient *client)
 		onDisconnect(client);
 	}
 
-	digitalWrite(DCE_DTR, toggleCarrier(false));
+	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
 
 	//delay(5000);
 }
@@ -1371,10 +1375,10 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 
 			memset(temp, 0, 100);
 			strncpy(temp, currentS + 5, offset - 5);
-			_baudRate = atoi(temp);
+			_baudRate = atol(temp);
 			setDefaultBaud(_baudRate);
 #if DEBUG == 1
-			lggr.print(F("S90=")); lggr.println(temp);
+			lggr.print(F("S200=")); lggr.println(temp);
 #endif
 //			print(F("SAVED S200=")); println(temp);
 //			EEPROM.write(S90_ADDRESS, atoi(temp));
@@ -1449,7 +1453,7 @@ void ModemBase::connect(EthernetClient *client)
 	{
 		printResponse("2", F("RING"));
 
-		digitalWrite(DTE_DCD, toggleCarrier(true));
+		digitalWrite(DTE_DCD, LOW); // toggleCarrier(true));
 
 		digitalWrite(DCE_RI, HIGH);
 		delay(250);
@@ -1503,21 +1507,26 @@ void ModemBase::connectOut()
 	}
 
 
-	digitalWrite(DCE_DTR, toggleCarrier(true));
+	digitalWrite(DCE_DTR, LOW); // toggleCarrier(true));
 
 	_isConnected = true;
 	_isCommandMode = false;
 	_isRinging = false;
 }
 
-void ModemBase::processData(EthernetClient *cl)
+void ModemBase::processData(EthernetClient *cl, File *myLogFile)
 {
+	digitalWrite(DCE_RTS, LOW);
+	//if(digitalRead(DCE_CTS) == HIGH) Serial.write("::DCE_CTS is high::");
+	//if(digitalRead(DCE_CTS) == LOW) Serial.write("::DCE_CTS is low::");
 	while(_serial->available())
 	{
+		Serial.write("::available::");
 		//digitalWrite(DCE_RTS, HIGH);
 		if(_isCommandMode)
 		{
 			char inbound = _serial->read();
+			Serial.write(inbound);
 			if(_echoOn && inbound != _S2_escapeCharacter)
 			{
 				_serial->write(inbound);
@@ -1576,6 +1585,7 @@ void ModemBase::processData(EthernetClient *cl)
 				if(!_isCommandMode)
 				{
 					int result = cl->write(inbound);
+					myLogFile->write(inbound);
 					if(result != 1) 
 					{
 						println();
@@ -1586,7 +1596,7 @@ void ModemBase::processData(EthernetClient *cl)
 			}
 		}
 	}
-	digitalWrite(DCE_RTS, LOW);
+	//digitalWrite(DCE_RTS, LOW);
 }
 
 void ModemBase::setLineSpeed(void)

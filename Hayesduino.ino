@@ -30,6 +30,9 @@ License: http://hayesduino.codeplex.com/license
 #include "EEPROM.h"
 #include "HardwareSerial.h"
 
+#include <SD.h>
+
+
 #if DEBUG == 1 && !defined(__UNO__)
 #include "Logger.h"
 #endif
@@ -56,6 +59,8 @@ ModemBase modem;
 EthernetClient client;
 EthernetServer EthServer(23);
 
+File myLogFile;
+
 int currentClient = MAX_SOCK_NUM;
 
 
@@ -63,6 +68,8 @@ void disconnectClient(EthernetClient *client)
 {
 	currentClient = MAX_SOCK_NUM;
 	if(client) client->stop();
+	myLogFile.flush();
+	myLogFile.close();
 }
 
 void dialout(char * host, ModemBase *modm)
@@ -139,6 +146,11 @@ void setup()
 	pinMode(CS_FLASH, OUTPUT);
 	pinMode(CS_WIZ, OUTPUT);
 
+	pinMode(53, OUTPUT);
+	digitalWrite(10, HIGH);
+	pinMode(4, OUTPUT);
+	digitalWrite(4, HIGH);
+
 #ifndef __UNO__
 	if(Serial) Serial.begin(115200);
 	Serial.println("Initialized serial.");
@@ -153,6 +165,15 @@ void setup()
 
 #endif
 
+	//Serial.println("Before SD.begin");
+
+	//if(!SD.begin(4))
+	//{
+	//	Serial.println("Could not initialize SD card.  FREEZING.");
+	//	//while(true);
+	//}
+
+
 	byte usedDHCP = 0;
 
 	mac[0] = EEPROM.read(MAC_1);
@@ -162,6 +183,7 @@ void setup()
 	mac[4] = EEPROM.read(MAC_5);
 	mac[5] = EEPROM.read(MAC_6);
 
+	Serial.println("Before Ethernet.");
 	if(EEPROM.read(USE_DHCP) != 0)
 	{
 		usedDHCP = 1;
@@ -184,7 +206,9 @@ void setup()
 			EEPROM.read(GATEWAY_IP_3), EEPROM.read(GATEWAY_IP_4)));
 	}
 
+	Serial.println("Before EthServer.begin");
 	EthServer.begin();
+	Serial.println("After EthServer.begin");
 
 	pinMode(STATUS_LED, OUTPUT);
 
@@ -200,6 +224,7 @@ void setup()
 
 	modem.print(F("LOCAL IP  : "));
 	Ethernet.localIP().printTo(modem);
+	Ethernet.localIP().printTo(Serial);
 	modem.println();
 
 #ifdef __MEGA__
@@ -235,6 +260,8 @@ void loop()
 		//}
 	}
 
+	unsigned char remoteIP[4];
+
 	for(int i=0; i<4; ++i)
 	{
 		if(currentClient < MAX_SOCK_NUM
@@ -242,6 +269,8 @@ void loop()
 			&& EthServer.connected(i))
 		{
 			EthernetClient *tempClient = new EthernetClient(i);
+
+
 			tempClient->println(F("SYSTEM IS BUSY.  TRY AGAIN LATER."));
 			tempClient->stop();
 			delete tempClient;
@@ -254,11 +283,19 @@ void loop()
 		!modem.getIsConnected()
 		)
 	{
-		delay(500);
+		delay(1000);
 		if(EthServer.connected(tempClient.getSock()))
 		{
 			client = tempClient;
 			currentClient = client.getSock();
+
+			client.getRemoteIP(remoteIP);
+
+			myLogFile = SD.open("bbs.log", FILE_WRITE);
+			myLogFile.print(remoteIP[0]); myLogFile.print('.');
+			myLogFile.print(remoteIP[1]); myLogFile.print('.');
+			myLogFile.print(remoteIP[2]); myLogFile.print('.');
+			myLogFile.print(remoteIP[3]); myLogFile.print('\n');
 
 			modem.connect(&client);
 
@@ -267,6 +304,7 @@ void loop()
 				client.println(".");
 			}
 			client.println(F("CONNECTING TO SYSTEM."));
+			myLogFile.println(F("CONNECTING TO SYSTEM."));
 		}
 	} 
 	
@@ -286,10 +324,12 @@ void loop()
 			inbound = client.read();
 
 			modem.write(inbound);
+			myLogFile.write(inbound);
+			Serial.write(inbound);
 		}  
 		else if(!modem.getIsCommandMode() && client.available() == 0)
 		{
-			digitalWrite(DCE_RTS, LOW);
+			//digitalWrite(DCE_RTS, LOW);
 		}
 		else if(modem.getIsCommandMode() && client.available() > 0)
 		{
@@ -306,16 +346,16 @@ void loop()
 	else if(!modem.getIsConnected() &&
 		modem.getIsCommandMode())
 	{
-		digitalWrite(DCE_RTS, LOW);
+		//digitalWrite(DCE_RTS, LOW);
 	}
 	//else if(digitalRead(DTE_CTS) == HIGH)
 	//{
 	//	digitalWrite(DTE_RTS, LOW);
 	//}
 
-	modem.processData(&client);
+	modem.processData(&client, &myLogFile);
 
-	digitalWrite(DCE_RTS, LOW);
+	//digitalWrite(DCE_RTS, HIGH);
 
 }
 

@@ -30,7 +30,7 @@ public:
   virtual void stop();
   virtual uint8_t connected();
   virtual operator bool();
-
+  uint8_t* getRemoteIP(uint8_t remoteIP[])
   uint8_t getSock();
 
   friend class EthernetServer;
