@@ -90,7 +90,7 @@ ModemBase::ModemBase()
 	digitalWrite(DCE_RI, LOW);
 	digitalWrite(DCE_CTS, HIGH);
 	digitalWrite(DTE_DSR, HIGH);
-	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
+	digitalWrite(DCE_DTR, toggleCarrier(false));
 }
 
 void ModemBase::factoryReset(void)
@@ -185,7 +185,7 @@ void ModemBase::loadDefaults(void)
 		_S37_lineSpeed = EEPROM.read(S37_ADDRESS);
 		_S38_delayForced = EEPROM.read(S38_ADDRESS);
 
-		_isDcdInverted = (bool)EEPROM.read(S90_ADDRESS);
+		_isDcdInverted = EEPROM.read(S90_ADDRESS);
 	}
 	else
 	{
@@ -227,7 +227,7 @@ void ModemBase::begin(
 
 	setLineSpeed();
 
-	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
+	digitalWrite(DCE_DTR, toggleCarrier(false));
 	digitalWrite(DCE_RTS, HIGH);
 	digitalWrite(DCE_RI, LOW);
 
@@ -258,14 +258,14 @@ void ModemBase::setDefaultBaud(uint32_t baudRate)
 #endif
 }
 
-void ModemBase::setDcdInverted(bool isInverted)
+void ModemBase::setDcdInverted(char isInverted)
 {
 	_isDcdInverted = isInverted;
 }
 
 bool ModemBase::getDcdInverted(void)
 {
-	return _isDcdInverted;
+	return _isDcdInverted == 1;
 }
 
 bool ModemBase::getIsConnected(void)
@@ -291,8 +291,14 @@ bool ModemBase::getIsCommandMode(void)
 int ModemBase::toggleCarrier(boolean isHigh)
 {
 
-	int result = _isDcdInverted ? (isHigh ? LOW : HIGH) : (isHigh ? HIGH : LOW);
-	digitalWrite(STATUS_LED, result);
+	int result = 0; //_isDcdInverted ? (isHigh ? LOW : HIGH) : (isHigh ? HIGH : LOW);
+	switch(_isDcdInverted)
+	{
+	case 0: result = (int)(!isHigh); break;
+	case 1: result = (int)(isHigh); break;
+	case 2: result = LOW;
+	}
+	//digitalWrite(STATUS_LED, result);
 	return result;
 }
 
@@ -323,7 +329,7 @@ void ModemBase::disconnect(EthernetClient *client)
 		onDisconnect(client);
 	}
 
-	digitalWrite(DCE_DTR, LOW); // toggleCarrier(false));
+	digitalWrite(DCE_DTR, toggleCarrier(false));
 
 	//delay(5000);
 }
@@ -1356,7 +1362,7 @@ void ModemBase::processCommandBuffer(EthernetClient *client)
 
 			memset(temp, 0, 100);
 			strncpy(temp, currentS + 4, offset - 4);
-			_isDcdInverted = (bool)atoi(temp);
+			_isDcdInverted = atoi(temp);
 #if DEBUG == 1
 			lggr.print(F("S90=")); lggr.println(temp);
 #endif
@@ -1453,7 +1459,7 @@ void ModemBase::connect(EthernetClient *client)
 	{
 		printResponse("2", F("RING"));
 
-		digitalWrite(DTE_DCD, LOW); // toggleCarrier(true));
+		digitalWrite(DTE_DCD, toggleCarrier(true));
 
 		digitalWrite(DCE_RI, HIGH);
 		delay(250);
@@ -1507,7 +1513,7 @@ void ModemBase::connectOut()
 	}
 
 
-	digitalWrite(DCE_DTR, LOW); // toggleCarrier(true));
+	digitalWrite(DCE_DTR, toggleCarrier(true));
 
 	_isConnected = true;
 	_isCommandMode = false;
@@ -1525,7 +1531,7 @@ void ModemBase::processData(EthernetClient *cl, File *myLogFile)
 		//digitalWrite(DCE_RTS, HIGH);
 		if(_isCommandMode)
 		{
-			char inbound = _serial->read();
+			char inbound = toupper(_serial->read());
 			Serial.write(inbound);
 			if(_echoOn && inbound != _S2_escapeCharacter)
 			{

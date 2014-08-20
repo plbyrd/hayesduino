@@ -81,7 +81,7 @@ class ModemBase : public Stream
 	bool _isCommandMode;
 	bool _isConnected;
 	bool _isRinging;
-	bool _isDcdInverted;
+	uint8_t _isDcdInverted;
 
 	bool _echoOn;
 	bool _verboseResponses;
@@ -155,7 +155,7 @@ S37 Command options:
 	 void factoryReset(void);
 	 uint32_t getBaudRate(void);
 	 void setDefaultBaud(uint32_t baudRate);
-	 void setDcdInverted(bool isInverted);
+	 void setDcdInverted(char isInverted);
 	 bool getDcdInverted(void);
 	 bool getIsConnected(void);
 	 bool getIsRinging(void);
